@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forell | Financial Dashboard FY26</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#eef0f5; --surface:#fff; --surface2:#f4f6fa; --surface3:#e8ecf4;
+    --border:#d0d8e8; --border2:#e4e9f4;
+    --accent:#e8732a; --accent-l:#fdf0e8;
+    --good:#1aab72;  --good-l:#e8f8f2;
+    --bad:#d63031;   --bad-l:#fdeaea;
+    --warn:#c4962a;  --warn-l:#fdf5e0;
+    --text:#18253d;  --text2:#3e4f6e; --text3:#7e8faa;
+    --navy:#0d1829;
+    --header-h:68px;
+    --nav-h:52px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;font-size:15px;min-height:100vh;display:flex;flex-direction:column;}
+
+  /* ── HEADER — sticky top ── */
+  header{
+    background:var(--navy);border-bottom:3px solid var(--accent);
+    padding:0 32px;display:flex;align-items:center;justify-content:space-between;
+    height:var(--header-h);position:sticky;top:0;z-index:300;
+  }
+  .logo{display:flex;align-items:center;gap:14px;}
+  .logo-mark{width:38px;height:38px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);}
+  .logo-text{font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;}
+  .logo-sub{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.14em;text-transform:uppercase;margin-top:2px;}
+  .hdr-title{font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45);}
+  .hdr-badge{background:var(--accent);color:#fff;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 13px;border-radius:3px;}
+
+  /* ── MONTH NAV — sticky below header ── */
+  .month-nav{
+    background:var(--surface);border-bottom:2px solid var(--border);
+    padding:0 32px;display:flex;align-items:center;overflow-x:auto;
+    position:sticky;top:var(--header-h);z-index:200;
+    height:var(--nav-h);box-shadow:0 2px 10px rgba(0,0,0,.09);
+  }
+  .month-nav::-webkit-scrollbar{height:0;}
+  .month-tab{
+    padding:0 22px;height:var(--nav-h);display:flex;align-items:center;
+    font-size:14px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;
+    white-space:nowrap;transition:color .18s,background .18s;
+  }
+  .month-tab:hover{color:var(--text2);background:var(--surface2);}
+  .month-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .pdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle;}
+  .ytd-tab{margin-left:auto;border-left:2px solid var(--border);padding-left:22px;color:var(--text2);}
+  .ytd-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  /* ── MAIN ── */
+  main{flex:1;padding:28px 32px;max-width:1700px;margin:0 auto;width:100%;}
+
+  .sec{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:12px;}
+  .sec::after{content:'';flex:1;height:1px;background:var(--border);}
+
+  /* ── STATUS PILLS ── */
+  .sbar{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
+  .pill{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:7px 15px;font-size:13px;font-weight:700;color:var(--text2);box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .pill .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .dg{background:var(--good);} .db{background:var(--bad);} .dw{background:var(--warn);}
+
+  /* ── SUMMARY BAND ── */
+  .sband{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:22px 28px;display:flex;align-items:stretch;margin-bottom:24px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+  .si{display:flex;flex-direction:column;gap:4px;padding:0 28px;border-right:1px solid var(--border2);}
+  .si:first-child{padding-left:0;} .si:last-child{border-right:none;}
+  .si-lbl{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);}
+  .si-act{font-size:30px;font-weight:700;line-height:1.1;}
+  .si-bud{font-size:13px;color:var(--text2);}
+  .si-var{font-size:13px;font-weight:800;}
+  .si-act.g{color:var(--good);} .si-act.b{color:var(--bad);} .si-act.w{color:var(--warn);} .si-act.n{color:var(--text);}
+  .si-var.g{color:var(--good);} .si-var.b{color:var(--bad);} .si-var.w{color:var(--warn);}
+
+  /* ── TREND STRIP ── */
+  .tstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+  @media(max-width:1200px){.tstrip{grid-template-columns:repeat(2,1fr);}}
+  .tc{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:15px 17px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .tc-lbl{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+  .tc-val{font-size:19px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:7px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .td{font-size:13px;font-weight:800;padding:3px 9px;border-radius:3px;}
+  .tdg{color:var(--good);background:var(--good-l);} .tdb{color:var(--bad);background:var(--bad-l);} .tdw{color:var(--warn);background:var(--warn-l);}
+  .twrap{height:58px;position:relative;}
+
+  /* ── UTILIZATION ── */
+  .util-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:20px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .util-wrap{height:210px;position:relative;}
+
+  /* ── KPI GRID ── */
+  .kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+  @media(max-width:1200px){.kgrid{grid-template-columns:repeat(2,1fr);}}
+  .kc{background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--border);border-radius:6px;padding:16px 18px 14px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .kc.g{border-left-color:var(--good);} .kc.b{border-left-color:var(--bad);} .kc.w{border-left-color:var(--warn);} .kc.n{border-left-color:var(--accent);}
+  .kc-lbl{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:7px;}
+  .kc-act{font-size:28px;font-weight:700;line-height:1;margin-bottom:8px;}
+  .kc-act.g{color:var(--good);} .kc-act.b{color:var(--bad);} .kc-act.w{color:var(--warn);} .kc-act.n{color:var(--text);}
+  .kc-meta{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
+  .kc-bud{color:var(--text3);}
+  .kv{font-size:15px;font-weight:800;padding:3px 10px;border-radius:4px;}
+  .kvg{color:var(--good);background:var(--good-l);} .kvb{color:var(--bad);background:var(--bad-l);} .kvw{color:var(--warn);background:var(--warn-l);}
+
+  /* ── WIP TABLE ── */
+  .wip-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:20px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .wip-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+  .wip-t{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);}
+  .wip-tot{font-size:22px;font-weight:700;color:var(--bad);}
+  table.wt{width:100%;border-collapse:collapse;}
+  table.wt th{text-align:right;padding:8px 10px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);border-bottom:2px solid var(--border);background:var(--surface2);}
+  table.wt th:first-child{text-align:left;}
+  table.wt td{padding:9px 10px;text-align:right;color:var(--text2);border-bottom:1px solid var(--border2);font-size:14px;}
+  table.wt td:first-child{text-align:left;color:var(--text);}
+  table.wt tr:hover td{background:var(--surface2);}
+
+  /* ── LAYOUTS ── */
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;}
+  .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:24px;}
+  @media(max-width:1100px){.g4{grid-template-columns:1fr 1fr;}}
+  @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr;}}
+
+  /* ── CHART / LIST CARDS ── */
+  .cc{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .cc-t{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;}
+  .cch{position:relative;height:175px;}
+  .lc{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .lc-t{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--border);}
+  .li{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border2);}
+  .li:last-child{border-bottom:none;}
+  .lin{color:var(--text2);flex:1;padding-right:12px;font-size:14px;line-height:1.35;}
+  .liv{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;}
+  .liv.rb{color:var(--bad);}
+
+  /* ── YTD HERO ── */
+  .ytd-hero{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:28px 32px;margin-bottom:22px;display:flex;gap:0;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+  .ym{flex:1;min-width:160px;padding:0 28px;border-right:1px solid var(--border);}
+  .ym:first-child{padding-left:0;} .ym:last-child{border-right:none;}
+  .ym-lbl{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+  .ym-val{font-size:40px;font-weight:700;line-height:1;}
+  .ym-sub{font-size:14px;color:var(--text2);margin-top:6px;}
+  .ym-val.g{color:var(--good);} .ym-val.w{color:var(--warn);} .ym-val.n{color:var(--text);}
+
+  /* ── PERF TABLE ── */
+  .pt-wrap{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:20px;margin-bottom:24px;overflow-x:auto;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  table.pt{width:100%;border-collapse:collapse;min-width:750px;}
+  table.pt th{text-align:center;padding:10px 14px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);border-bottom:2px solid var(--border);background:var(--surface2);}
+  table.pt th:first-child{text-align:left;}
+  table.pt td{padding:10px 14px;text-align:center;border-bottom:1px solid var(--border2);font-size:14px;}
+  table.pt td:first-child{text-align:left;color:var(--text2);font-size:13px;font-weight:700;}
+  table.pt tr:hover td{background:var(--surface2);}
+  table.pt .hl{background:rgba(232,115,42,.07);}
+  .pg{color:var(--good);font-weight:700;} .pb{color:var(--bad);font-weight:700;} .pw{color:var(--warn);font-weight:700;} .pn{color:var(--text);font-weight:600;}
+
+  .panel{display:none;} .panel.active{display:block;}
+
+  footer{border-top:2px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+  .ft{font-size:12px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;font-weight:700;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark"></div>
+    <div><div class="logo-text">Forell Elsesser</div><div class="logo-sub">Engineers, Inc.</div></div>
+  </div>
+  <div class="hdr-title">Financial Performance Dashboard</div>
+  <div class="hdr-badge">FY 2025–2026</div>
+</header>
+
+<!-- STICKY month nav sits directly below the sticky header -->
+<nav class="month-nav">
+  <div class="month-tab active"  onclick="showPanel('sep25',this)"><span class="pdot" style="background:var(--good)"></span>Sep '25</div>
+  <div class="month-tab"         onclick="showPanel('oct25',this)"><span class="pdot" style="background:var(--good)"></span>Oct '25</div>
+  <div class="month-tab"         onclick="showPanel('nov25',this)"><span class="pdot" style="background:var(--good)"></span>Nov '25</div>
+  <div class="month-tab"         onclick="showPanel('dec25',this)"><span class="pdot" style="background:var(--good)"></span>Dec '25</div>
+  <div class="month-tab"         onclick="showPanel('jan26',this)"><span class="pdot" style="background:var(--good)"></span>Jan '26</div>
+  <div class="month-tab"         onclick="showPanel('feb26',this)"><span class="pdot" style="background:var(--good)"></span>Feb '26</div>
+  <div class="month-tab ytd-tab" onclick="showPanel('ytd',this)">◈ YTD Summary</div>
+</nav>
+
+<main>
+  <div id="panel-sep25" class="panel active"></div>
+  <div id="panel-oct25" class="panel"></div>
+  <div id="panel-nov25" class="panel"></div>
+  <div id="panel-dec25" class="panel"></div>
+  <div id="panel-jan26" class="panel"></div>
+  <div id="panel-feb26" class="panel"></div>
+  <div id="panel-ytd"   class="panel"></div>
+</main>
+
+<footer>
+  <div class="ft">Forell Elsesser Engineers, Inc. · Financial Performance Dashboard · FY 2025–2026</div>
+  <div class="ft">Sep 2025 – Feb 2026 · Actuals vs Budget · All figures USD</div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DATA  — ACTUALS vs BUDGET  (corrected orientation)
+//
+//  Monthly Profit/Income ACTUALS = Net Income Before IC from
+//    the Financial Statements P&L (left column).
+//  Monthly Profit/Income BUDGET  = the right "REF / Budget"
+//    column in those same statements.
+//
+//  Sep–Feb actuals confirmed against P&L reconciliation.
+//  Operational metrics (Billed, WIP, AR, Sales, Util, NEM, OH)
+//  sourced from Key Indicators — these are single-column
+//  measurements and are NOT subject to the same swap.
+// ═══════════════════════════════════════════════════════════
+
+const MO = ["Sep '25","Oct '25","Nov '25","Dec '25","Jan '26","Feb '26"];
+
+//  profit[i]  = ACTUAL net income before IC ($K)
+//  gProfit[i] = BUDGET net income before IC ($K)
+const D = {
+  profit:  [100.3,  110.8,   39.0,  115.7,  154.5,  111.5],
+  gProfit: [126.9,  235.0,  -12.8,  -22.8,  111.9,   88.0],
+
+  // Actual income / budget income ($K)
+  income:  [807,   788,   722,   782,   835,   812],
+  gIncome: [812.2, 910.1, 670.1, 632.6, 774.7, 759.4],
+
+  // Operational KPIs — actuals only (no swap needed)
+  wip:    [928,   928,  1011,  1032,   911,   942],
+  sales:  [423,   235,  1399,   608,   752,   862],
+  ar120:  [1318,  905,   790,   865,   790,   546],
+  billed: [599,   931,   696,   705,   896,   761],
+  util:   [54.1, 56.1,  51.9,  48.5,  55.6,  59.2],
+  nem:    [3.48, 3.25,  3.70,  3.71,  3.69,  3.62],
+  oh:     [2.05, 1.76,  2.46,  2.14,  2.10,  2.09],
+  cash:   [944,  1619,  1493,  1509,  1659,  1574],
+
+  // Budgets for operational KPIs
+  gWip:    [350,  350,  350,  350,  350,  350],
+  gSales:  [1000,1000, 1000, 1000, 1000, 1000],
+  gAr120:  [300,  300,  300,  300,  300,  300],
+  gBilled: [846,  948,  698,  659,  807,  791],
+  gUtil:   [61.9,67.2, 57.6, 47.3, 59.7, 64.4],
+  gNem:    [3.38,3.52, 3.07, 3.55, 3.39, 3.08],
+  gOh:     [1.85,1.61, 2.13, 2.68, 1.90, 1.72],
+};
+
+// Utilization actuals and budgets by staff category
+const UACT  = [[54.1,45.0,71.1,77.4,35.2],[56.1,47.6,78.1,75.1,79.7],[51.9,46.0,59.8,71.0,68.4],[48.5,45.6,66.2,61.9,59.5],[55.6,50.8,62.2,77.5,55.9],[59.2,56.7,74.4,78.7,41.6]];
+const UBUD  = [[61.9,49.4,70.0,79.8,71.0],[67.2,55.4,76.0,85.8,77.1],[57.6,45.2,65.8,75.5,66.9],[47.3,34.0,54.6,64.3,55.6],[59.7,46.5,68.4,78.1,69.5],[64.4,51.6,73.5,83.2,74.6]];
+const UCATS = ['All Staff','Principals','Associates','Engineers','CAD'];
+
+// ── Per-month detail data ──────────────────────────────────
+const MONTHS = [
+  //─── SEP 25 ──────────────────────────────────────────────
+  { key:'sep25', mi:0,
+    statuses:[
+      ['g','Profitable Month – All 6 Months Were Profitable'],
+      ['w','Profit Below Budget by $26.6K'],
+      ['b','Utilization Below Budget'],
+      ['b','AR +120 Elevated – $1.3M vs $300K Budget'],
+      ['b','Sales Significantly Under Budget ($423K vs $1M'],
+      ['b','Held WIP 2.7× Over Budget Threshold'],
+    ],
+    // ── Summary band ──
+    actProfit:'$100,300', budProfit:'$126,900', profClass:'g',
+    actMargin:'11.5%',    budMargin:'15.6%',
+    actIncome:'$807,000', budIncome:'$812,200',
+    actYTD:   '$100,300', budYTD:   '$126,900', ytdClass:'w',
+    cash:'$944,000',
+    profitDiff:-26.6, // actual minus budget ($K)
+    // ── KPIs (actual / budget / variance / status) ──
+    kpis:[
+      {l:'Spent at Billing Rates',a:'$806,000',ac:'n',b:'Budget $846,000',v:'▼ ($40,000)',vc:'kvw',c:'w'},
+      {l:'Billed',                a:'$599,000',ac:'n',b:'Budget $846,000',v:'▼ ($247,000)',vc:'kvb',c:'b'},
+      {l:'Held WIP',              a:'$928,000',ac:'b',b:'Budget <$350,000',v:'▲ +$578,000',vc:'kvb',c:'b'},
+      {l:'Sales Added',           a:'$422,765',ac:'w',b:'Budget $1,000,000',v:'▼ ($577,235)',vc:'kvb',c:'b'},
+      {l:'AR Total',              a:'$3,739,000',ac:'b',b:'Budget <$3,000,000',v:'▲ +$739,000',vc:'kvb',c:'b'},
+      {l:'AR +120 Days',          a:'$1,318,000',ac:'b',b:'Budget <$300,000',v:'▲ +$1,018,000',vc:'kvb',c:'b'},
+      {l:'Overhead Rate',         a:'2.05',ac:'w',b:'Budget 1.60',v:'▲ +0.45',vc:'kvb',c:'w'},
+      {l:'Net Multiplier',        a:'3.48',ac:'g',b:'Budget 2.96',v:'▲ +0.52',vc:'kvg',c:'g'},
+    ],
+    // ── Trends (title, display value, delta text, delta class, data key, budget key, line color) ──
+    trends:[
+      {t:'Monthly Profit ($K)',  v:'$100.3K', d:'▼ ($26.6K) vs Budget',  dc:'tdw', dk:'profit', bk:'gProfit', col:'good'},
+      {t:'Held WIP ($K)',        v:'$928K',   d:'▲ +$578K vs Budget',    dc:'tdb', dk:'wip',    bk:'gWip',    col:'bad'},
+      {t:'Sales Added ($K)',     v:'$422.8K', d:'▼ ($577K) vs Budget',   dc:'tdb', dk:'sales',  bk:'gSales',  col:'accent'},
+      {t:'AR +120 Days ($K)',    v:'$1,318K', d:'▲ +$1,018K vs Budget',  dc:'tdb', dk:'ar120',  bk:'gAr120',  col:'bad'},
+      {t:'Billed ($K)',          v:'$599K',   d:'▼ ($247K) vs Budget',   dc:'tdb', dk:'billed', bk:'gBilled', col:'warn'},
+      {t:'Dollar Utilization %', v:'54.1%',   d:'▼ 7.8 pts vs Budget',   dc:'tdb', dk:'util',   bk:'gUtil',   col:'warn'},
+      {t:'Net Multiplier',       v:'3.48',    d:'▲ +0.52 vs Budget',     dc:'tdg', dk:'nem',    bk:'gNem',    col:'good'},
+      {t:'Overhead Rate',        v:'2.05',    d:'▲ +0.45 vs Budget',     dc:'tdb', dk:'oh',     bk:'gOh',     col:'bad'},
+    ],
+    topSales:[['Piedras Blancas Seismic Retrofit','$87,675'],['School of the Sacred Heart – Wellness/Aquatics','$38,500'],['Courage Museum TI','$37,850'],['Crocker Galleria Renovation (50 Post)','$35,000'],['SLAC SSRL 10S Alcove A&E Design Services','$24,020'],['UCB Academic Seismic Replacement Bldg ASRB','$22,400'],['Tesla Bumblebee EBC','$20,000']],
+    topBilled:[['SLAC SSRL 10S Alcove A&E Design Services','$80,373'],['800 Chestnut Structural Retrofit','$55,000'],['LDS Salt Lake Main Temple: Seismic Retrofit','$52,334'],['SLACC LSCC','$42,400'],['Stanford Hacienda Lakes Ambulatory Surgery Ctr','$34,116'],['ASMT 1 UCSF New Hospital Parnassus Heights','$32,133'],['PG&E Seismic Evaluations 2025','$30,513']],
+    topLabor:[['BART Police HQ','$184,345'],['800 Chestnut Structural Retrofit','$78,000'],['Oakland Children\'s Hospital Parking Structure','$76,001'],['SLACC LSCC','$71,000'],['UCB Heathcock Hall Chemistry Expansion','$66,700'],['Bancroft Parking Structure UCB','$62,763'],['Convene TI','$30,513'],['Stanford Varian Labs – Feasibility Study','$29,331'],['Alameda Aquatic Center','$24,450'],['SLAC SSRL 10S Alcove A&E Design Services','$24,098']],
+    topWO:[['CSU Monterey Bay Taylor Science & Engineering Bldg','$9,658'],['Project Gem','$1,960'],['SSF Orange Park Aquatics','$1,443']],
+    showWip:false
+  },
+
+  //─── OCT 25 ──────────────────────────────────────────────
+  { key:'oct25', mi:1,
+    statuses:[
+      ['g','Profitable – $110.8K Actual Net Income'],
+      ['b','Profit Well Below Budget – Budget Was $235K'],
+      ['b','Sales Well Under Budget ($235K vs $1M)'],
+      ['b','AR +120 Still Elevated – $905K'],
+    ],
+    actProfit:'$110,800', budProfit:'$235,000', profClass:'g',
+    actMargin:'12.9%',    budMargin:'25.8%',
+    actIncome:'$788,000', budIncome:'$910,100',
+    actYTD:   '$211,100', budYTD:   '$361,900', ytdClass:'w',
+    cash:'$1,619,000',
+    profitDiff:-124.2,
+    kpis:[
+      {l:'Spent at Billing Rates',a:'$849,000',ac:'n',b:'Budget $948,000',v:'▼ ($99,000)',vc:'kvb',c:'w'},
+      {l:'Billed',                a:'$931,000',ac:'n',b:'Budget $948,000',v:'▼ ($17,000)',vc:'kvw',c:'w'},
+      {l:'Held WIP',              a:'$927,904',ac:'b',b:'Budget <$350,000',v:'▲ +$578,000',vc:'kvb',c:'b'},
+      {l:'Sales Added',           a:'$235,215',ac:'w',b:'Budget $1,000,000',v:'▼ ($764,785)',vc:'kvb',c:'b'},
+      {l:'AR Total',              a:'$3,404,000',ac:'b',b:'Budget <$3,000,000',v:'▲ +$404,000',vc:'kvb',c:'b'},
+      {l:'AR +120 Days',          a:'$905,000',ac:'b',b:'Budget <$300,000',v:'▲ +$605,000',vc:'kvb',c:'b'},
+      {l:'Overhead Rate',         a:'1.76',ac:'g',b:'Budget 1.61',v:'▲ +0.15',vc:'kvw',c:'g'},
+      {l:'Net Multiplier',        a:'3.25',ac:'n',b:'Budget 3.52',v:'▼ (0.27)',vc:'kvw',c:'w'},
+    ],
+    trends:[
+      {t:'Monthly Profit ($K)',  v:'$110.8K', d:'▼ ($124.2K) vs Budget', dc:'tdb', dk:'profit', bk:'gProfit', col:'good'},
+      {t:'Held WIP ($K)',        v:'$927.9K', d:'▲ +$578K vs Budget',    dc:'tdb', dk:'wip',    bk:'gWip',    col:'bad'},
+      {t:'Sales Added ($K)',     v:'$235.2K', d:'▼ ($764.8K) vs Budget', dc:'tdb', dk:'sales',  bk:'gSales',  col:'accent'},
+      {t:'AR +120 Days ($K)',    v:'$905.2K', d:'▲ +$605K vs Budget',    dc:'tdb', dk:'ar120',  bk:'gAr120',  col:'bad'},
+      {t:'Billed ($K)',          v:'$931K',   d:'▼ ($17K) vs Budget',    dc:'tdw', dk:'billed', bk:'gBilled', col:'warn'},
+      {t:'Dollar Utilization %', v:'56.1%',   d:'▼ 11.1 pts vs Budget',  dc:'tdb', dk:'util',   bk:'gUtil',   col:'warn'},
+      {t:'Net Multiplier',       v:'3.25',    d:'▼ (0.27) vs Budget',    dc:'tdw', dk:'nem',    bk:'gNem',    col:'warn'},
+      {t:'Overhead Rate',        v:'1.76',    d:'▲ +0.15 vs Budget',     dc:'tdw', dk:'oh',     bk:'gOh',     col:'warn'},
+    ],
+    topSales:[['Village High School DSA Plancheck','$64,000'],['IMT Sunkist Building Adaptive Reuse','$49,560'],['Santa Clara County 70W Hedding TI East Wing','$34,625'],['UC Merced – COB3 Peer Review','$21,000'],['UCB University Hall Seismic Retrofit CO# 5','$12,000'],['Stanford CCSR Storm Drainage – Schematic Design','$7,500'],['Intuit MTV Campus, MTV4 New Wall Opening','$6,950']],
+    topBilled:[['JCC Sixth Appellate Courthouse Sunnyvale','$166,500'],['800 Chestnut Structural Retrofit','$98,900'],['BART Police HQ','$79,000'],['930 Commercial','$70,700'],['LDS Salt Lake Main Temple','$61,820'],['DoS Rapid Visual + Jakarta CMR','$39,808'],['ASMT 1 UCSF New Hospital Parnassus Heights','$27,559']],
+    topLabor:[['LDS Salt Lake Main Temple','$436,173'],['LLNL New Biological Research Facility','$77,870'],['RMP ESB New Site','$72,949'],['ASMT 1 UCSF New Hospital Parnassus Heights','$59,221'],['SLAC SSRL 10S Alcove A&E Design Services','$58,193'],['UCSF Parnassus Central Campus Site Improvements','$56,761'],['LBNL ALS Roof Hatch Study','$46,960'],['UCB School of Optometry','$40,000'],['PG&E Seismic Evaluations 2025','$36,531'],['Convene TI','$28,113']],
+    topWO:[['LLNL New Biological Research Facility','$12,783'],['CSU Monterey Bay Taylor Science & Engineering Bldg','$9,998'],['LLNL B391 – CA','$4,031']],
+    showWip:false
+  },
+
+  //─── NOV 25 ──────────────────────────────────────────────
+  { key:'nov25', mi:2,
+    statuses:[
+      ['g','Profitable – Beat Budgeted Loss of ($12,800)'],
+      ['g','Income Beat Budget – $722K vs $670K Budgeted'],
+      ['g','Strong Sales – $1.4M vs $1M Budget'],
+      ['b','WIP Growing – Highest Yet at $1,011K'],
+      ['b','Overhead Rate Above Budget'],
+    ],
+    actProfit:'$39,000', budProfit:'($12,800)', profClass:'g',
+    actMargin:'5.2%',    budMargin:'-1.9%',
+    actIncome:'$722,000', budIncome:'$670,100',
+    actYTD:   '$250,100', budYTD:   '$349,100', ytdClass:'w',
+    cash:'$1,493,000',
+    profitDiff:51.8,
+    kpis:[
+      {l:'Spent at Billing Rates',a:'$676,000',ac:'n',b:'Budget $698,000',v:'▼ ($22,000)',vc:'kvw',c:'w'},
+      {l:'Billed',                a:'$696,000',ac:'n',b:'Budget $698,000',v:'≈ ($2,000)',vc:'kvg',c:'g'},
+      {l:'Held WIP',              a:'$1,011,447',ac:'b',b:'Budget <$350,000',v:'▲ +$661,447',vc:'kvb',c:'b'},
+      {l:'Sales Added',           a:'$1,398,712',ac:'g',b:'Budget $1,000,000',v:'▲ +$398,712',vc:'kvg',c:'g'},
+      {l:'AR Total',              a:'$3,576,000',ac:'b',b:'Budget <$3,000,000',v:'▲ +$576,000',vc:'kvb',c:'b'},
+      {l:'AR +120 Days',          a:'$790,000',ac:'b',b:'Budget <$300,000',v:'▲ +$490,000',vc:'kvb',c:'b'},
+      {l:'Overhead Rate',         a:'2.46',ac:'b',b:'Budget 2.13',v:'▲ +0.33',vc:'kvb',c:'b'},
+      {l:'Net Multiplier',        a:'3.70',ac:'g',b:'Budget 3.07',v:'▲ +0.63',vc:'kvg',c:'g'},
+    ],
+    trends:[
+      {t:'Monthly Profit ($K)',  v:'$39.0K',   d:'▲ +$51.8K vs Budget',   dc:'tdg', dk:'profit', bk:'gProfit', col:'good'},
+      {t:'Held WIP ($K)',        v:'$1,011.4K',d:'▲ +$661K vs Budget',    dc:'tdb', dk:'wip',    bk:'gWip',    col:'bad'},
+      {t:'Sales Added ($K)',     v:'$1,398.7K',d:'▲ +$398.7K vs Budget',  dc:'tdg', dk:'sales',  bk:'gSales',  col:'good'},
+      {t:'AR +120 Days ($K)',    v:'$789.6K',  d:'▲ +$489.6K vs Budget',  dc:'tdb', dk:'ar120',  bk:'gAr120',  col:'bad'},
+      {t:'Billed ($K)',          v:'$696K',    d:'▼ ($2K) vs Budget',     dc:'tdw', dk:'billed', bk:'gBilled', col:'warn'},
+      {t:'Dollar Utilization %', v:'51.9%',    d:'▼ 5.7 pts vs Budget',   dc:'tdb', dk:'util',   bk:'gUtil',   col:'warn'},
+      {t:'Net Multiplier',       v:'3.70',     d:'▲ +0.63 vs Budget',     dc:'tdg', dk:'nem',    bk:'gNem',    col:'good'},
+      {t:'Overhead Rate',        v:'2.46',     d:'▲ +0.33 vs Budget',     dc:'tdb', dk:'oh',     bk:'gOh',     col:'bad'},
+    ],
+    topSales:[['The Campus at SRP','$392,000'],['LBNL B71 Deactivation','$273,360'],['UCSF NHPH Plan Review – Increments 5&8','$150,000'],['BART Police HQ','$133,882'],['SFUHS – Campus Masterplan','$81,000'],['32nd Street USC Magnet School DSA Plancheck','$70,000'],['SFMOMA CC MEP Upgrades','$47,920']],
+    topBilled:[['PG&E Seismic Evaluations 2025','$146,124'],['JCC Sixth Appellate Courthouse Sunnyvale','$132,863'],['LDS Salt Lake Main Temple','$56,298'],['930 Commercial','$49,750'],['800 Chestnut Structural','$41,600'],['Oakland Children\'s Hospital Parking Structure','$40,293'],['SLAC SSRL 10S Alcove','$37,968']],
+    topLabor:[['SLACC LSCC','$42,400'],['ASMT 1 UCSF New Hospital Parnassus Heights','$32,133'],['CSU Monterey Bay Taylor Science & Engineering Bldg','$30,000'],['901 Cal Ave, Palo Alto: Permit Re-Design','$29,331'],['800 Chestnut Structural','$24,000'],['UCB Academic Seismic Replacement Building ASRB','$22,400'],['SLAC SSRL 10S Alcove A&E Design Services','$22,181'],['Crocker Galleria Renovation (50 Post) – Restart','$21,500'],['UCB Heathcock Hall Chemistry Expansion','$19,350'],['Santa Clara County 70W Hedding TI','$17,914']],
+    topWO:[['Tesla Reliability Lab','$8,223'],['930 Commercial','$5,911'],['SF Mint Seismic Upgrade Bid Package #7','$3,538'],['Intuit Mountain View Campus, MTV4 TI','$2,544']],
+    showWip:false
+  },
+
+  //─── DEC 25 ──────────────────────────────────────────────
+  { key:'dec25', mi:3,
+    statuses:[
+      ['g','Profitable – Beat Budgeted Loss of ($22,800)'],
+      ['g','Income Beat Budget – $782K vs $633K Budgeted'],
+      ['g','Overhead Rate Well Below Budget'],
+      ['g','Utilization Met or Beat Budget All Categories'],
+      ['b','WIP Peaked at $1,032K – Highest of FY26'],
+      ['b','Sales Under Budget ($608K vs $1M)'],
+    ],
+    actProfit:'$115,700', budProfit:'($22,800)', profClass:'g',
+    actMargin:'14.2%',    budMargin:'-3.6%',
+    actIncome:'$782,000', budIncome:'$632,600',
+    actYTD:   '$365,800', budYTD:   '$326,300', ytdClass:'g',
+    cash:'$1,509,000',
+    profitDiff:138.5,
+    kpis:[
+      {l:'Spent at Billing Rates',a:'$740,000',ac:'n',b:'Budget $659,000',v:'▲ +$81,000',vc:'kvg',c:'g'},
+      {l:'Billed',                a:'$705,000',ac:'n',b:'Budget $659,000',v:'▲ +$46,000',vc:'kvg',c:'g'},
+      {l:'Held WIP',              a:'$1,031,561',ac:'b',b:'Budget <$350,000',v:'▲ +$681,561',vc:'kvb',c:'b'},
+      {l:'Sales Added',           a:'$608,115',ac:'w',b:'Budget $1,000,000',v:'▼ ($391,885)',vc:'kvb',c:'b'},
+      {l:'AR Total',              a:'$3,554,000',ac:'b',b:'Budget <$3,000,000',v:'▲ +$554,000',vc:'kvb',c:'b'},
+      {l:'AR +120 Days',          a:'$865,000',ac:'b',b:'Budget <$300,000',v:'▲ +$565,000',vc:'kvb',c:'b'},
+      {l:'Overhead Rate',         a:'2.14',ac:'g',b:'Budget 2.68',v:'▼ (0.54)',vc:'kvg',c:'g'},
+      {l:'Net Multiplier',        a:'3.71',ac:'g',b:'Budget 3.55',v:'▲ +0.16',vc:'kvg',c:'g'},
+    ],
+    trends:[
+      {t:'Monthly Profit ($K)',  v:'$115.7K', d:'▲ +$138.5K vs Budget', dc:'tdg', dk:'profit', bk:'gProfit', col:'good'},
+      {t:'Held WIP ($K)',        v:'$1,031.6K',d:'▲ +$681.6K vs Budget',dc:'tdb', dk:'wip',    bk:'gWip',    col:'bad'},
+      {t:'Sales Added ($K)',     v:'$608.1K', d:'▼ ($391.9K) vs Budget',dc:'tdb', dk:'sales',  bk:'gSales',  col:'accent'},
+      {t:'AR +120 Days ($K)',    v:'$864.5K', d:'▲ +$564.5K vs Budget', dc:'tdb', dk:'ar120',  bk:'gAr120',  col:'bad'},
+      {t:'Billed ($K)',          v:'$705K',   d:'▲ +$46K vs Budget',    dc:'tdg', dk:'billed', bk:'gBilled', col:'good'},
+      {t:'Dollar Utilization %', v:'48.5%',   d:'▲ +1.2 pts vs Budget', dc:'tdg', dk:'util',   bk:'gUtil',   col:'good'},
+      {t:'Net Multiplier',       v:'3.71',    d:'▲ +0.16 vs Budget',    dc:'tdg', dk:'nem',    bk:'gNem',    col:'good'},
+      {t:'Overhead Rate',        v:'2.14',    d:'▼ (0.54) vs Budget',   dc:'tdg', dk:'oh',     bk:'gOh',     col:'good'},
+    ],
+    topSales:[['Prime Data Centers – SMF01-02 (Clark Pacific)','$110,000'],['LDS Salt Lake Main Temple: CA Add Service 6','$108,000'],['DSA Plancheck Bubbling Wells Elementary School','$108,000'],['LBNL ALS Roof Hatch Final Design','$88,010'],['John Wayne Airport Fire Station','$51,705'],['LDS Salt Lake Main Temple: Additional Isolator Tilt','$50,000'],['San Bernardino Valley Communication Center','$17,500']],
+    topBilled:[['San Bernardino Valley Communication Center','$112,100'],['JCC Sixth Appellate Courthouse Sunnyvale','$49,613'],['DoS Rapid Visual Screening 2024–2025','$44,696'],['LACGH Seismic Retrofit Peer Review','$36,408'],['ASMT 1 UCSF Benioff Children\'s Hospital','$33,985'],['LDS Salt Lake Main Temple: CA Add Service 5','$33,192'],['Prime Data Centers – SMF01-02 (Clark Pacific)','$26,404']],
+    topLabor:[['800 Chestnut Structural Retrofit','$189,600'],['930 Commercial','$70,700'],['PG&E Seismic Evaluations 2025','$31,660'],['UCSF Elevator Modernization','$30,361'],['LBNL Shuttle Shelter Modernization Final Design','$29,820'],['ATC 140-7','$26,400'],['901 Cal Ave, Palo Alto: Permit Re-Design','$22,745'],['UCB Morgan Hall Seismic Evaluation','$20,834'],['Hangar for Riverside Sheriff\'s Office at MARB','$20,396'],['CA State Capitol Annex: Structural Plan Review','$20,010']],
+    topWO:[['Bancroft Parking Structure UCB','$5,678'],['CSU Monterey Bay Taylor Science & Engineering Bldg','$4,918'],['LBNL B66 4th Floor Infrastructure Upgrade','$1,550'],['SFDC 50 Fremont, SPA','$968']],
+    showWip:false
+  },
+
+  //─── JAN 26 ──────────────────────────────────────────────
+  { key:'jan26', mi:4,
+    statuses:[
+      ['g','Best Actual Profit Month of FY26 – $154.5K'],
+      ['g','Profit &amp; Income Both Above Budget'],
+      ['g','AR +120 Improving Trend'],
+      ['b','WIP Still Elevated – $911K vs $350K Budget'],
+      ['b','Sales Under Budget ($752K vs $1M)'],
+    ],
+    actProfit:'$154,500', budProfit:'$111,900', profClass:'g',
+    actMargin:'18.0%',    budMargin:'14.4%',
+    actIncome:'$835,000', budIncome:'$774,700',
+    actYTD:   '$520,300', budYTD:   '$438,200', ytdClass:'g',
+    cash:'$1,659,000',
+    profitDiff:42.6,
+    kpis:[
+      {l:'Spent at Billing Rates',a:'$798,000',ac:'n',b:'Budget $807,000',v:'▼ ($9,000)',vc:'kvw',c:'w'},
+      {l:'Billed',                a:'$896,000',ac:'n',b:'Budget $807,000',v:'▲ +$89,000',vc:'kvg',c:'g'},
+      {l:'Held WIP',              a:'$911,384',ac:'b',b:'Budget <$350,000',v:'▲ +$561,384',vc:'kvb',c:'b'},
+      {l:'Sales Added',           a:'$752,293',ac:'w',b:'Budget $1,000,000',v:'▼ ($247,707)',vc:'kvb',c:'b'},
+      {l:'AR Total',              a:'$3,279,000',ac:'b',b:'Budget <$3,000,000',v:'▲ +$279,000',vc:'kvb',c:'b'},
+      {l:'AR +120 Days',          a:'$790,000',ac:'b',b:'Budget <$300,000',v:'▲ +$490,000',vc:'kvb',c:'b'},
+      {l:'Overhead Rate',         a:'2.10',ac:'w',b:'Budget 1.90',v:'▲ +0.20',vc:'kvb',c:'b'},
+      {l:'Net Multiplier',        a:'3.69',ac:'g',b:'Budget 3.39',v:'▲ +0.30',vc:'kvg',c:'g'},
+    ],
+    trends:[
+      {t:'Monthly Profit ($K)',  v:'$154.5K', d:'▲ +$42.6K vs Budget',  dc:'tdg', dk:'profit', bk:'gProfit', col:'good'},
+      {t:'Held WIP ($K)',        v:'$911.4K', d:'▲ +$561.4K vs Budget', dc:'tdb', dk:'wip',    bk:'gWip',    col:'bad'},
+      {t:'Sales Added ($K)',     v:'$752.3K', d:'▼ ($247.7K) vs Budget',dc:'tdb', dk:'sales',  bk:'gSales',  col:'accent'},
+      {t:'AR +120 Days ($K)',    v:'$790K',   d:'▲ +$490K vs Budget',   dc:'tdb', dk:'ar120',  bk:'gAr120',  col:'bad'},
+      {t:'Billed ($K)',          v:'$896K',   d:'▲ +$89K vs Budget',    dc:'tdg', dk:'billed', bk:'gBilled', col:'good'},
+      {t:'Dollar Utilization %', v:'55.6%',   d:'▼ 4.1 pts vs Budget',  dc:'tdb', dk:'util',   bk:'gUtil',   col:'warn'},
+      {t:'Net Multiplier',       v:'3.69',    d:'▲ +0.30 vs Budget',    dc:'tdg', dk:'nem',    bk:'gNem',    col:'good'},
+      {t:'Overhead Rate',        v:'2.10',    d:'▲ +0.20 vs Budget',    dc:'tdb', dk:'oh',     bk:'gOh',     col:'bad'},
+    ],
+    topSales:[['800 Chestnut Tenant Improvement','$313,123'],['Intuit MTV Building 8 TI','$103,500'],['James Logan High School Aquatics','$90,000'],['Genentech Substation','$73,600'],['SSF Orange Park Extended CA','$19,420'],['1330 Bush Due Diligence','$18,000'],['201 Post St. Tatcha TI, Stairs at Floors 5 and 6','$18,000']],
+    topBilled:[['800 Chestnut Structural Retrofit','$198,450'],['LLNL U291 Cooling Tower','$54,086'],['JCC Sixth Appellate Courthouse Sunnyvale','$49,613'],['DoS Rapid Visual Screening 2024–2025','$43,545'],['Oakland Children\'s Hospital Parking Structure','$42,962'],['BART Police HQ','$34,600'],['SFUHS – Lower Campus','$33,020']],
+    topLabor:[['PG&E Seismic Evaluations 2025','$170,478'],['800 Chestnut Structural Retrofit','$143,500'],['BART Police HQ','$94,000'],['LDS Salt Lake Main Temple: Seismic Retrofit','$79,603'],['930 Commercial','$49,750'],['ASMT 1 UCSF New Hospital Parnassus Heights','$48,483'],['DoS Rapid Visual Screening 2024–2025','$48,325'],['Ausenco – Centre Block – Amendments 19 & 20','$43,426'],['Foothill College Decarbonization','$24,800'],['SFMOMA Art Walls Phase 4','$23,538']],
+    topWO:[['Tesla K25-0006 Hazwaste Area Enclosure','$10,780'],['Cisco SJC13 Lab115 Chamber Replacement','$6,209'],['CSU Monterey Bay Taylor Science & Engineering Bldg','$4,999'],['Bancroft Parking Structure UCB','$1,861'],['SFMOMA Art Walls Light Gage Issues','$1,090'],['800 Chestnut Structural Retrofit','$170'],['Oakland Children\'s Hospital Parking Structure','($2,767)']],
+    showWip:false
+  },
+
+  //─── FEB 26 ──────────────────────────────────────────────
+  { key:'feb26', mi:5,
+    statuses:[
+      ['g','Profitable – Beat Budget by $23.5K'],
+      ['g','YTD Profit Now Ahead of Budget for FY26'],
+      ['g','AR Avg Days Hit 120 Target for First Time'],
+      ['b','Overhead Rate Above Budget'],
+      ['b','CAD Utilization Low at 41.6%'],
+      ['b','Held WIP Persistent – $942K vs $350K Budget'],
+    ],
+    actProfit:'$111,500', budProfit:'$88,000', profClass:'g',
+    actMargin:'13.4%',    budMargin:'11.6%',
+    actIncome:'$812,000', budIncome:'$759,400',
+    actYTD:   '$631,900', budYTD:   '$526,200', ytdClass:'g',
+    cash:'$1,574,000',
+    profitDiff:23.5,
+    kpis:[
+      {l:'Spent at Billing Rates',a:'$785,000',ac:'n',b:'Budget $791,000',v:'▼ ($6,000)',vc:'kvw',c:'w'},
+      {l:'Billed',                a:'$761,000',ac:'n',b:'Budget $791,000',v:'▼ ($30,000)',vc:'kvw',c:'w'},
+      {l:'Held WIP',              a:'$942,155',ac:'b',b:'Budget <$350,000',v:'▲ +$592,155',vc:'kvb',c:'b'},
+      {l:'Sales Added',           a:'$862,480',ac:'w',b:'Budget $1,000,000',v:'▼ ($137,520)',vc:'kvw',c:'w'},
+      {l:'AR Total',              a:'$3,211,000',ac:'b',b:'Budget <$3,000,000',v:'▲ +$211,000',vc:'kvb',c:'b'},
+      {l:'AR +120 Days',          a:'$546,000',ac:'b',b:'Budget <$300,000',v:'▲ +$246,000',vc:'kvb',c:'b'},
+      {l:'Overhead Rate',         a:'2.09',ac:'w',b:'Budget 1.72',v:'▲ +0.37',vc:'kvb',c:'b'},
+      {l:'Net Multiplier',        a:'3.62',ac:'g',b:'Budget 3.08',v:'▲ +0.54',vc:'kvg',c:'g'},
+    ],
+    trends:[
+      {t:'Monthly Profit ($K)',  v:'$111.5K', d:'▲ +$23.5K vs Budget',  dc:'tdg', dk:'profit', bk:'gProfit', col:'good'},
+      {t:'Held WIP ($K)',        v:'$942.2K', d:'▲ +$592K vs Budget',   dc:'tdb', dk:'wip',    bk:'gWip',    col:'bad'},
+      {t:'Sales Added ($K)',     v:'$862.5K', d:'▼ ($137.5K) vs Budget',dc:'tdw', dk:'sales',  bk:'gSales',  col:'accent'},
+      {t:'AR +120 Days ($K)',    v:'$546.5K', d:'▲ +$246.5K vs Budget', dc:'tdb', dk:'ar120',  bk:'gAr120',  col:'bad'},
+      {t:'Billed ($K)',          v:'$761K',   d:'▼ ($30K) vs Budget',   dc:'tdw', dk:'billed', bk:'gBilled', col:'warn'},
+      {t:'Dollar Utilization %', v:'59.2%',   d:'▼ 5.2 pts vs Budget',  dc:'tdb', dk:'util',   bk:'gUtil',   col:'warn'},
+      {t:'Net Multiplier',       v:'3.62',    d:'▲ +0.54 vs Budget',    dc:'tdg', dk:'nem',    bk:'gNem',    col:'good'},
+      {t:'Overhead Rate',        v:'2.09',    d:'▲ +0.37 vs Budget',    dc:'tdb', dk:'oh',     bk:'gOh',     col:'bad'},
+    ],
+    topSales:[['2900–2950 Bay Road','$597,600'],['Core Scientific Rodeo Data Center','$95,000'],['Los Altos Library Renovation','$35,000'],['Electronic Arts TI','$23,000'],['BART Police HQ Materials Testing Delay','$16,200'],['BART Police HQ Ground Motions Delay','$13,400'],['ATC 137-8','$12,040']],
+    topBilled:[['ASMT 1 UCSF Benioff Children\'s Hospital','$63,070'],['Prime Data Centers – SMF01-02 (Clark Pacific)','$51,446'],['JCC Sixth Appellate Courthouse Sunnyvale','$49,613'],['Core Scientific Rodeo Data Center','$42,197'],['LBNL ALS Roof Hatch Final Design','$24,385'],['LDS Salt Lake Main Temple: Seismic Retrofit','$22,731'],['BART to SJ Bridge Peer Review','$22,618']],
+    topLabor:[['BART Police HQ','$174,025'],['DoS Rapid Visual Screening 2024–2025','$43,545'],['School of the Sacred Heart – Wellness/Aquatics','$34,800'],['Stanford Hacienda Lakes Ambulatory Surgery Center','$33,076'],['2222 Carroll St.','$32,100'],['BART to SJ Bridge Peer Review','$27,645'],['Prime Data Centers – SMF01-02 (Clark Pacific)','$25,036'],['Santa Clara County 70W Hedding TI','$24,974'],['IMT Sunkist Building Adaptive Reuse','$23,299'],['Intuit Mountain View Campus, MTV4 TI','$22,395']],
+    topWO:[['Crocker Galleria Renovation (50 Post) – Restart','$20,961'],['St. Vincent De Paul Play Structure','$7,763'],['Tesla K25-0006 Hazwaste Area Enclosure','$2,912'],['Bancroft Parking Structure UCB','$2,719'],['Intuit Mountain View Campus, MTV4 TI','$1,558'],['Diablo Valley College PUMA Center TI','$1,299']],
+    showWip:true
+  },
+];
+
+// ── Chart colour map ──
+const CL = {good:'#1aab72',bad:'#d63031',warn:'#c4962a',accent:'#e8732a'};
+const BASE = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{
+    legend:{display:false},
+    tooltip:{backgroundColor:'#18253d',titleColor:'#fff',bodyColor:'#d0d8e8',
+             borderColor:'#3e4f6e',borderWidth:1,padding:11,
+             titleFont:{family:'Arial',size:13},bodyFont:{family:'Arial',size:13}}
+  },
+  scales:{
+    x:{ticks:{color:'#7e8faa',font:{family:'Arial',size:12}},grid:{color:'rgba(180,195,220,0.4)'}},
+    y:{ticks:{color:'#7e8faa',font:{family:'Arial',size:12}},grid:{color:'rgba(180,195,220,0.4)'}}
+  }
+};
+const SPARK={responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:false},tooltip:{enabled:false}},
+  scales:{x:{display:false},y:{display:false}},
+  elements:{point:{radius:0},line:{borderWidth:2,tension:0.35}},animation:false};
+
+function cl(k){return CL[k]||CL.accent;}
+
+function mkSpark(id,data,bdata,col){
+  const el=document.getElementById(id);if(!el)return;
+  new Chart(el,{type:'line',data:{labels:MO.slice(0,data.length),datasets:[
+    {data,borderColor:cl(col),fill:false},
+    {data:bdata,borderColor:'rgba(100,120,160,0.35)',borderDash:[4,3],fill:false,borderWidth:1.5}
+  ]},options:SPARK});
+}
+
+function mkUtil(id,mi){
+  const el=document.getElementById(id);if(!el)return;
+  const act=UACT[mi],bud=UBUD[mi];
+  new Chart(el,{type:'bar',data:{labels:UCATS,datasets:[
+    {label:'Actual',data:act,backgroundColor:act.map((v,i)=>v>=bud[i]?'rgba(26,171,114,0.82)':'rgba(196,150,42,0.82)'),borderRadius:4,categoryPercentage:0.65,barPercentage:0.45},
+    {label:'Budget',data:bud,backgroundColor:'rgba(120,140,180,0.2)',borderColor:'rgba(120,140,180,0.55)',borderWidth:1.5,borderRadius:4,categoryPercentage:0.65,barPercentage:0.45}
+  ]},options:{...BASE,
+    plugins:{...BASE.plugins,legend:{display:true,labels:{color:'#3e4f6e',font:{family:'Arial',size:13},boxWidth:13,padding:16}}},
+    scales:{x:{...BASE.scales.x},y:{...BASE.scales.y,min:0,max:100,ticks:{...BASE.scales.y.ticks,callback:v=>v+'%'}}}}});
+}
+
+// ── Panel HTML builder ────────────────────────────────────
+function buildPanel(m){
+  const varSign = m.profitDiff >= 0
+    ? `<span class="si-var g">▲ +$${Math.abs(m.profitDiff).toFixed(1)}K vs Budget</span>`
+    : `<span class="si-var b">▼ ($${Math.abs(m.profitDiff).toFixed(1)}K) vs Budget</span>`;
+
+  const incomeAct = parseFloat(String(m.actIncome).replace(/[^0-9]/g,''));
+  const incomeBud = parseFloat(String(m.budIncome).replace(/[^0-9]/g,''));
+  const incDiff   = incomeAct - incomeBud;
+  const incVar    = incDiff >= 0
+    ? `<span class="si-var g">▲ +$${Math.abs(Math.round(incDiff/1000)).toFixed(0)}K vs Budget</span>`
+    : `<span class="si-var b">▼ ($${Math.abs(Math.round(incDiff/1000)).toFixed(0)}K) vs Budget</span>`;
+  const incClass  = incDiff >= 0 ? 'g' : (incDiff > -50000 ? 'w' : 'b');
+
+  const pills = m.statuses.map(([t,l])=>`<div class="pill"><span class="dot d${t}"></span>${l}</div>`).join('');
+  const kpis  = m.kpis.map(k=>`<div class="kc ${k.c}"><div class="kc-lbl">${k.l}</div><div class="kc-act ${k.ac}">${k.a}</div><div class="kc-meta"><span class="kc-bud">${k.b}</span><span class="kv ${k.vc}">${k.v}</span></div></div>`).join('');
+  const trs   = m.trends.map((t,i)=>`<div class="tc"><div class="tc-lbl">${t.t}</div><div class="tc-val">${t.v}<span class="td ${t.dc}">${t.d}</span></div><div class="twrap"><canvas id="${m.key}-t${i}"></canvas></div></div>`).join('');
+  const mkList = arr => arr.map(([n,v])=>`<div class="li"><div class="lin">${n}</div><div class="liv${v.startsWith('(')?` rb`:''}">${v}</div></div>`).join('');
+
+  const wipSection = m.showWip ? `
+    <div class="sec">WIP Aging Detail – Feb '26 Top 10 Projects</div>
+    <div class="wip-card">
+      <div class="wip-hdr"><div class="wip-t">Held WIP by Project</div><div class="wip-tot">Total: $942,155 &nbsp;|&nbsp; Budget: &lt;$350,000 &nbsp;<span style="font-size:15px">▲ +$592,155</span></div></div>
+      <table class="wt">
+        <thead><tr><th>Project</th><th>%</th><th>Total</th><th>Current</th><th>&gt;30d</th><th>&gt;60d</th><th>&gt;90d</th><th style="color:var(--bad)">&gt;120d</th></tr></thead>
+        <tbody>
+          <tr><td>BART Police HQ</td><td>18%</td><td>$169,617</td><td>$4,072</td><td>$1,255</td><td>$7,123</td><td>$4,748</td><td style="color:var(--bad);font-weight:700">$152,421</td></tr>
+          <tr><td>UCB Heathcock Hall Chemistry Expansion</td><td>12%</td><td>$112,676</td><td>$7,053</td><td>$9,030</td><td>$5,460</td><td>$7,360</td><td style="color:var(--bad);font-weight:700">$83,773</td></tr>
+          <tr><td>San Bernardino Valley Communication Center</td><td>11%</td><td>$101,881</td><td>$7,958</td><td>$1,864</td><td>$270</td><td>$0</td><td style="color:var(--bad);font-weight:700">$91,788</td></tr>
+          <tr><td>Nueva School Arts and Admin Building</td><td>7%</td><td>$65,206</td><td>$5,600</td><td>$3,696</td><td>$11,035</td><td>$9,944</td><td>$34,931</td></tr>
+          <tr><td>800 Chestnut Structural Retrofit</td><td>6%</td><td>$59,984</td><td>$38,808</td><td>$21,176</td><td>$0</td><td>$0</td><td>$0</td></tr>
+          <tr><td>UCB School of Optometry</td><td>5%</td><td>$44,863</td><td>$1,792</td><td>$1,064</td><td>$430</td><td>$1,505</td><td>$40,072</td></tr>
+          <tr><td>CA State Capitol Annex: Structural Plan Review</td><td>4%</td><td>$38,879</td><td>$542</td><td>$6,484</td><td>$2,473</td><td>$7,265</td><td>$22,116</td></tr>
+          <tr><td>800 Chestnut Tenant Improvement</td><td>4%</td><td>$38,074</td><td>$25,896</td><td>$1,083</td><td>$88</td><td>$8,067</td><td>$2,940</td></tr>
+          <tr><td>2222 Carroll St.</td><td>4%</td><td>$34,935</td><td>$271</td><td>$5,116</td><td>$20,530</td><td>$6,433</td><td>$2,585</td></tr>
+          <tr><td>UCSF Parnassus Central Campus Site Imp.</td><td>3%</td><td>$31,604</td><td>$19,024</td><td>$12,581</td><td>$0</td><td>$0</td><td>$0</td></tr>
+        </tbody>
+      </table>
+    </div>` : '';
+
+  return `
+    <div class="sbar">${pills}</div>
+    <div class="sband">
+      <div class="si">
+        <span class="si-lbl">Monthly Profit — Actual</span>
+        <span class="si-act ${m.profClass}">${m.actProfit}</span>
+        <span class="si-bud">Budget: <b>${m.budProfit}</b></span>
+        ${varSign}
+      </div>
+      <div class="si">
+        <span class="si-lbl">Profit Margin — Actual</span>
+        <span class="si-act ${m.profClass}">${m.actMargin}</span>
+        <span class="si-bud">Budget: <b>${m.budMargin}</b></span>
+      </div>
+      <div class="si">
+        <span class="si-lbl">Total Income — Actual</span>
+        <span class="si-act ${incClass}">${m.actIncome}</span>
+        <span class="si-bud">Budget: <b>${m.budIncome}</b></span>
+        ${incVar}
+      </div>
+      <div class="si">
+        <span class="si-lbl">Cash Balance</span>
+        <span class="si-act n">${m.cash}</span>
+        <span class="si-bud">End of month</span>
+      </div>
+      <div class="si">
+        <span class="si-lbl">YTD Profit — Actual</span>
+        <span class="si-act ${m.ytdClass}">${m.actYTD}</span>
+        <span class="si-bud">Budget: <b>${m.budYTD}</b></span>
+      </div>
+    </div>
+    <div class="sec">Key Metrics — Actual vs Budget (dashed line = Budget)</div>
+    <div class="tstrip">${trs}</div>
+    <div class="sec">Utilization: Actual vs Budget by Staff Category</div>
+    <div class="util-card"><div class="util-wrap"><canvas id="${m.key}-util"></canvas></div></div>
+    <div class="sec">KPI Detail — Actuals vs Budget</div>
+    <div class="kgrid">${kpis}</div>
+    ${wipSection}
+    <div class="sec">Project Activity</div>
+    <div class="g4">
+      <div class="lc"><div class="lc-t">Top Sales Added</div>${mkList(m.topSales)}</div>
+      <div class="lc"><div class="lc-t">Top Billed Projects</div>${mkList(m.topBilled)}</div>
+      <div class="lc"><div class="lc-t">Top Labor Receipts</div>${mkList(m.topLabor)}</div>
+      <div class="lc"><div class="lc-t">Top Write-offs</div>${mkList(m.topWO)}</div>
+    </div>`;
+}
+
+// ── YTD panel ────────────────────────────────────────────
+function buildYTD(){
+  return `
+    <div class="ytd-hero">
+      <div class="ym">
+        <div class="ym-lbl">YTD Profit — Actual</div>
+        <div class="ym-val g">$631,900</div>
+        <div class="ym-sub">Budget: $526,200 &nbsp;·&nbsp; <b style="color:var(--good)">+$105,700 above budget</b></div>
+      </div>
+      <div class="ym">
+        <div class="ym-lbl">YTD Profit Margin</div>
+        <div class="ym-val g">13.2%</div>
+        <div class="ym-sub">Budget: 11.5% &nbsp;·&nbsp; Ahead of margin target</div>
+      </div>
+      <div class="ym">
+        <div class="ym-lbl">YTD Sales Added</div>
+        <div class="ym-val w">$4,280,000</div>
+        <div class="ym-sub">Budget: $6,000,000 &nbsp;·&nbsp; Gap: ($1,720,000)</div>
+      </div>
+      <div class="ym">
+        <div class="ym-lbl">Contract Backlog</div>
+        <div class="ym-val n">$6,287,000</div>
+        <div class="ym-sub">Feb '26 closing balance</div>
+      </div>
+    </div>
+    <div class="sec">6-Month Comparison — Actuals</div>
+    <div class="pt-wrap"><table class="pt">
+      <thead><tr><th>Metric</th><th>Sep '25</th><th>Oct '25</th><th>Nov '25</th><th>Dec '25</th><th>Jan '26</th><th class="hl">Feb '26</th></tr></thead>
+      <tbody>
+        <tr><td>Monthly Profit — Actual</td><td><span class="pg">$100,300</span></td><td><span class="pg">$110,800</span></td><td><span class="pg">$39,000</span></td><td><span class="pg">$115,700</span></td><td><span class="pg">$154,500</span></td><td class="hl"><span class="pg">$111,500</span></td></tr>
+        <tr><td>Monthly Profit — Budget</td><td><span class="pw">$126,900</span></td><td><span class="pw">$235,000</span></td><td><span class="pb">($12,800)</span></td><td><span class="pb">($22,800)</span></td><td><span class="pw">$111,900</span></td><td class="hl"><span class="pw">$88,000</span></td></tr>
+        <tr><td>Profit Margin — Actual</td><td><span class="pg">11.5%</span></td><td><span class="pg">12.9%</span></td><td><span class="pg">5.2%</span></td><td><span class="pg">14.2%</span></td><td><span class="pg">18.0%</span></td><td class="hl"><span class="pg">13.4%</span></td></tr>
+        <tr><td>Total Income — Actual</td><td><span class="pn">$807,000</span></td><td><span class="pn">$788,000</span></td><td><span class="pg">$722,000</span></td><td><span class="pg">$782,000</span></td><td><span class="pg">$835,000</span></td><td class="hl"><span class="pg">$812,000</span></td></tr>
+        <tr><td>Billed</td><td><span class="pb">$599,000</span></td><td><span class="pw">$931,000</span></td><td><span class="pw">$696,000</span></td><td><span class="pg">$705,000</span></td><td><span class="pg">$896,000</span></td><td class="hl"><span class="pw">$761,000</span></td></tr>
+        <tr><td>Held WIP</td><td><span class="pb">$928K</span></td><td><span class="pb">$928K</span></td><td><span class="pb">$1,011K</span></td><td><span class="pb">$1,032K</span></td><td><span class="pb">$911K</span></td><td class="hl"><span class="pb">$942K</span></td></tr>
+        <tr><td>Sales Added</td><td><span class="pb">$423K</span></td><td><span class="pb">$235K</span></td><td><span class="pg">$1,399K</span></td><td><span class="pb">$608K</span></td><td><span class="pb">$752K</span></td><td class="hl"><span class="pw">$862K</span></td></tr>
+        <tr><td>AR +120 Days</td><td><span class="pb">$1,318K</span></td><td><span class="pb">$905K</span></td><td><span class="pb">$790K</span></td><td><span class="pb">$865K</span></td><td><span class="pb">$790K</span></td><td class="hl"><span class="pb">$546K</span></td></tr>
+        <tr><td>Avg Days Receivable</td><td><span class="pb">140</span></td><td><span class="pb">127</span></td><td><span class="pb">134</span></td><td><span class="pb">133</span></td><td><span class="pw">123</span></td><td class="hl"><span class="pg">120</span></td></tr>
+        <tr><td>Dollar Utilization</td><td><span class="pw">54.1%</span></td><td><span class="pb">56.1%</span></td><td><span class="pb">51.9%</span></td><td><span class="pg">48.5%</span></td><td><span class="pw">55.6%</span></td><td class="hl"><span class="pw">59.2%</span></td></tr>
+        <tr><td>Net Multiplier</td><td><span class="pg">3.48</span></td><td><span class="pw">3.25</span></td><td><span class="pg">3.70</span></td><td><span class="pg">3.71</span></td><td><span class="pg">3.69</span></td><td class="hl"><span class="pg">3.62</span></td></tr>
+        <tr><td>Overhead Rate</td><td><span class="pb">2.05</span></td><td><span class="pw">1.76</span></td><td><span class="pb">2.46</span></td><td><span class="pg">2.14</span></td><td><span class="pb">2.10</span></td><td class="hl"><span class="pb">2.09</span></td></tr>
+        <tr><td>Cash Balance</td><td><span class="pn">$944K</span></td><td><span class="pn">$1,619K</span></td><td><span class="pn">$1,493K</span></td><td><span class="pn">$1,509K</span></td><td><span class="pn">$1,659K</span></td><td class="hl"><span class="pn">$1,574K</span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="sec">Trend Charts — All Key Metrics — Actuals (solid) vs Budget (dashed)</div>
+    <div class="g3">
+      <div class="cc"><div class="cc-t">Monthly Profit — Actual vs Budget ($K)</div><div class="cch"><canvas id="ytd-profit"></canvas></div></div>
+      <div class="cc"><div class="cc-t">Held WIP ($K) — Actual vs Budget &lt;$350K</div><div class="cch"><canvas id="ytd-wip"></canvas></div></div>
+      <div class="cc"><div class="cc-t">Sales Added ($K) — Actual vs Budget $1,000K</div><div class="cch"><canvas id="ytd-sales"></canvas></div></div>
+    </div>
+    <div class="g3">
+      <div class="cc"><div class="cc-t">AR +120 Days ($K) — Actual vs Budget &lt;$300K</div><div class="cch"><canvas id="ytd-ar120"></canvas></div></div>
+      <div class="cc"><div class="cc-t">Billed ($K) — Actual vs Monthly Budget</div><div class="cch"><canvas id="ytd-billed"></canvas></div></div>
+      <div class="cc"><div class="cc-t">Cash Balance ($K)</div><div class="cch"><canvas id="ytd-cash"></canvas></div></div>
+    </div>
+    <div class="g3">
+      <div class="cc"><div class="cc-t">Dollar Utilization % — Actual vs Budget</div><div class="cch"><canvas id="ytd-util"></canvas></div></div>
+      <div class="cc"><div class="cc-t">Net Multiplier — Actual vs Budget</div><div class="cch"><canvas id="ytd-nem"></canvas></div></div>
+      <div class="cc"><div class="cc-t">Overhead Rate — Actual vs Budget</div><div class="cch"><canvas id="ytd-oh"></canvas></div></div>
+    </div>
+    <div class="sec">Utilization by Staff Category — All 6 Months — Actuals</div>
+    <div class="cc" style="margin-bottom:24px"><div class="cch" style="height:230px"><canvas id="ytd-util-full"></canvas></div></div>`;
+}
+
+// ── Chart render for month tabs ──
+function renderMonth(m){
+  const n = m.mi + 1;
+  m.trends.forEach((t,i)=>{
+    mkSpark(`${m.key}-t${i}`, D[t.dk].slice(0,n), D[t.bk].slice(0,n), t.col);
+  });
+  mkUtil(`${m.key}-util`, m.mi);
+}
+
+// ── Chart render for YTD ──
+function renderYTD(){
+  const L2={...BASE,plugins:{...BASE.plugins,legend:{display:true,labels:{color:'#3e4f6e',font:{family:'Arial',size:12},boxWidth:13,padding:12}}}};
+  // profit bars: actual green/red, budget line dashed
+  const profActColors = D.profit.map(v=>v>=0?'rgba(26,171,114,0.78)':'rgba(214,48,49,0.78)');
+  const profBudColors = D.gProfit.map(v=>v>=0?'rgba(26,171,114,0.25)':'rgba(214,48,49,0.25)');
+
+  new Chart(document.getElementById('ytd-profit'),{type:'bar',data:{labels:MO,datasets:[
+    {label:'Actual',data:D.profit,backgroundColor:profActColors,borderRadius:4},
+    {label:'Budget',data:D.gProfit,backgroundColor:profBudColors,borderColor:profBudColors.map(c=>c.replace('0.25','0.8')),borderWidth:1.5,borderRadius:4}
+  ]},options:{...L2,scales:{...BASE.scales,y:{...BASE.scales.y,ticks:{...BASE.scales.y.ticks,callback:v=>'$'+(v>=0?'':'-')+Math.abs(v)+'K'}}}}});
+
+  new Chart(document.getElementById('ytd-wip'),{type:'line',data:{labels:MO,datasets:[
+    {label:'Actual',data:D.wip,borderColor:CL.bad,backgroundColor:'rgba(214,48,49,0.07)',tension:0.3,fill:true,pointRadius:5,pointBackgroundColor:CL.bad},
+    {label:'Budget',data:D.gWip,borderColor:CL.good,borderDash:[5,3],pointRadius:0}
+  ]},options:L2});
+
+  new Chart(document.getElementById('ytd-sales'),{type:'bar',data:{labels:MO,datasets:[
+    {label:'Actual',data:D.sales,backgroundColor:'rgba(232,115,42,0.78)',borderRadius:4},
+    {label:'Budget',data:D.gSales,type:'line',borderColor:CL.good,borderDash:[5,3],pointRadius:0,fill:false}
+  ]},options:L2});
+
+  new Chart(document.getElementById('ytd-ar120'),{type:'line',data:{labels:MO,datasets:[
+    {label:'Actual',data:D.ar120,borderColor:CL.warn,backgroundColor:'rgba(196,150,42,0.07)',tension:0.3,fill:true,pointRadius:5,pointBackgroundColor:CL.warn},
+    {label:'Budget',data:D.gAr120,borderColor:CL.good,borderDash:[5,3],pointRadius:0}
+  ]},options:L2});
+
+  new Chart(document.getElementById('ytd-billed'),{type:'bar',data:{labels:MO,datasets:[
+    {label:'Actual',data:D.billed,backgroundColor:D.billed.map((v,i)=>v>=D.gBilled[i]?'rgba(26,171,114,0.78)':'rgba(196,150,42,0.78)'),borderRadius:4},
+    {label:'Budget',data:D.gBilled,type:'line',borderColor:'rgba(100,130,180,0.6)',borderDash:[4,3],pointRadius:0,fill:false}
+  ]},options:L2});
+
+  new Chart(document.getElementById('ytd-cash'),{type:'line',data:{labels:MO,datasets:[
+    {label:'Cash',data:D.cash,borderColor:'#5878a8',backgroundColor:'rgba(88,120,168,0.08)',tension:0.3,fill:true,pointRadius:5,pointBackgroundColor:'#5878a8'}
+  ]},options:L2});
+
+  new Chart(document.getElementById('ytd-util'),{type:'line',data:{labels:MO,datasets:[
+    {label:'Actual',data:D.util,borderColor:CL.accent,backgroundColor:'rgba(232,115,42,0.07)',tension:0.3,fill:true,pointRadius:5,pointBackgroundColor:CL.accent},
+    {label:'Budget',data:D.gUtil,borderColor:'rgba(26,171,114,0.7)',borderDash:[5,3],pointRadius:0,tension:0.3}
+  ]},options:{...L2,scales:{...BASE.scales,y:{...BASE.scales.y,ticks:{...BASE.scales.y.ticks,callback:v=>v+'%'}}}}});
+
+  new Chart(document.getElementById('ytd-nem'),{type:'line',data:{labels:MO,datasets:[
+    {label:'Actual',data:D.nem,borderColor:CL.good,backgroundColor:'rgba(26,171,114,0.07)',tension:0.3,fill:true,pointRadius:5,pointBackgroundColor:CL.good},
+    {label:'Budget',data:D.gNem,borderColor:'rgba(100,130,180,0.6)',borderDash:[5,3],pointRadius:0}
+  ]},options:L2});
+
+  new Chart(document.getElementById('ytd-oh'),{type:'line',data:{labels:MO,datasets:[
+    {label:'Actual',data:D.oh,borderColor:CL.bad,backgroundColor:'rgba(214,48,49,0.07)',tension:0.3,fill:true,pointRadius:5,pointBackgroundColor:CL.bad},
+    {label:'Budget',data:D.gOh,borderColor:'rgba(26,171,114,0.7)',borderDash:[5,3],pointRadius:0}
+  ]},options:L2});
+
+  new Chart(document.getElementById('ytd-util-full'),{type:'bar',data:{labels:MO,datasets:[
+    {label:'All Staff', data:UACT.map(v=>v[0]),backgroundColor:'rgba(232,115,42,0.82)',borderRadius:3,categoryPercentage:0.85,barPercentage:0.18},
+    {label:'Principals',data:UACT.map(v=>v[1]),backgroundColor:'rgba(26,171,114,0.75)',borderRadius:3,categoryPercentage:0.85,barPercentage:0.18},
+    {label:'Associates',data:UACT.map(v=>v[2]),backgroundColor:'rgba(196,150,42,0.75)',borderRadius:3,categoryPercentage:0.85,barPercentage:0.18},
+    {label:'Engineers', data:UACT.map(v=>v[3]),backgroundColor:'rgba(88,120,168,0.75)',borderRadius:3,categoryPercentage:0.85,barPercentage:0.18},
+    {label:'CAD',       data:UACT.map(v=>v[4]),backgroundColor:'rgba(214,48,49,0.65)',borderRadius:3,categoryPercentage:0.85,barPercentage:0.18},
+  ]},options:{...L2,scales:{x:{...BASE.scales.x},y:{...BASE.scales.y,min:0,max:100,ticks:{...BASE.scales.y.ticks,callback:v=>v+'%'}}}}});
+}
+
+// ── Panel switching & init ──
+const rendered={};
+function showPanel(key,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.month-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+key).classList.add('active');
+  el.classList.add('active');
+  if(!rendered[key]){
+    rendered[key]=true;
+    setTimeout(()=>{
+      if(key==='ytd') renderYTD();
+      else MONTHS.forEach(m=>{ if(m.key===key) renderMonth(m); });
+    },50);
+  }
+}
+
+// ── Build all panels up front ──
+MONTHS.forEach(m=>{ document.getElementById('panel-'+m.key).innerHTML = buildPanel(m); });
+document.getElementById('panel-ytd').innerHTML = buildYTD();
+
+// ── Render initial panel ──
+rendered['sep25']=true;
+renderMonth(MONTHS[0]);
+</script>
+</body>
+</html>
